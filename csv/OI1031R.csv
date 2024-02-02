@@ -1,0 +1,8 @@
+water depth,Group,OI,,water depth,Group,OI,,Actual depth range
+2,Isopod,1,,2,Ostracoda,0.387097,,0-2m
+20,Isopod,0.65,,20,Ostracoda,0.240963855,,Not specified for isopos in the paper; 2-40 m for ostracod
+200,Isopod,0.46,,200,Ostracoda,0.233333333,,40-200 m
+1000,Isopod,0.17,,1000,Ostracoda,0.2125,,200-1000m
+2000,Isopod,0.08,,2000,Ostracoda,0.130434783,,1000-2000 m
+4000,Isopod,0.02,,4000,Ostracoda,0.0625,,2000-4000 m
+6000,Isopod,0,,6000,Ostracoda,0,,4000-6000 m

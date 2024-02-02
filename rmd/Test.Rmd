@@ -1,0 +1,103 @@
+---
+title: "Test"
+author: "Chih-Lin Wei"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ncdf4)
+library(raster)
+```
+
+Lee et al. (2005) developed a model for vertical transmittance of solar radiation in the upper ocean. The model uses total absorption,  particulate backscatter, water depth, and solar zenith angle as inputs. In this test, I used the total absorption and backscatter at 488 nm in the summer to calculate the vertical transmittance (Tvis) for the visible spectrum at surface, 25 m, and euphotic depth. Tvis is the ratio between downwelling solar radiation at the surface, Evis(0), and at depth, Evis(z). The total absorption, backscatter, and euphotic depth were downloaded from [OceanColor Web L3 browser](https://oceancolor.gsfc.nasa.gov/l3/order/). The complete references for Lee's algorithms can be found [here](https://oceancolor.gsfc.nasa.gov/products/special/#ZLEE).
+
+# Data from OceanColor Web
+## IOP Total Absorption at 488 nm (MODIS_Aqua summer climatology)
+
+```{r, fig.height=5, fig.width=8.5}
+nc <- nc_open("../OceanColorData/MODIS_Aqua/IOP_a_488/AQUA_MODIS.20020621_20210920.L3m.SCSU.IOP.a_488.4km.nc")
+ng <- ncvar_get(nc, varid = "a_488")
+a488 <- raster(t(ng), xmn=-180, xmx=180, ymn=-90, ymx=90)
+nc_close(nc)
+plot(a488)
+```
+
+## IOP Total Backscatter at 488 nm (MODIS_Aqua summer climatology)
+
+```{r, fig.height=5, fig.width=8.5}
+nc <- nc_open("../OceanColorData/MODIS_Aqua/IOP_bb_488/AQUA_MODIS.20020621_20210920.L3m.SCSU.IOP.bb_488.4km.nc")
+ng <- ncvar_get(nc, varid = "bb_488")
+bb488 <- raster(t(ng), xmn=-180, xmx=180, ymn=-90, ymx=90)
+nc_close(nc)
+plot(bb488)
+```
+
+## Euphotic depth (MODIS_Aqua summer climatology) from Lee Algorithm (ZLEE)
+
+```{r, fig.height=5, fig.width=8.5}
+nc <- nc_open("../OceanColorData/MODIS_Aqua/Zeu_lee/A20021722021263.L3m_SCSU_ZLEE_Zeu_lee_4km.nc")
+ng <- ncvar_get(nc, varid = "Zeu_lee")
+Zeu <- raster(t(ng), xmn=-180, xmx=180, ymn=-90, ymx=90)
+nc_close(nc)
+plot(Zeu)
+```
+
+
+# Lee et al. (2005) [Journal of Geophysical Research, 110(C2)](http://dx.doi.org/10.1029/2004jc002275)
+## Table 2. Values of the Model Parameters for Kvis(z)
+
+```{r}
+X0 = -0.057
+X1 = 0.482
+X2 = 4.221
+sigma0 = 0.183
+sigma1 = 0.702
+sigma2 = -2.567
+alpha0 = 0.090
+alpha1 = 1.465
+alpha2 = -0.667
+```
+
+## Vertical transmittance (Tvis) at surface, 25-m depth, and euphotic depth at zero solar zenith angle
+
+```{r}
+# Function for two-parameter model to estimate vertical transmittance (Tvis)
+Tvis_fun <- function(a488, bb488, z, theta){
+  # Equation 9a
+  K1 = (X0 + X1 * a488^0.5 + X2 * bb488) * (1 + alpha0 * sin(theta * pi/180))
+  # Equation 9b
+  K2 = (sigma0 + sigma1 * a488 + sigma2 * bb488) * (alpha1 +alpha2 * cos(theta * pi/180))
+  # Equation 7
+  # Attenuation coefficient
+  Kvis = K1 + K2/(1 + z)^0.5
+  # Equation 10
+  # Vertical transmittance
+  Tvis <- exp(-Kvis * z)
+  return(Tvis)
+}
+```
+
+### Tvis at surface
+
+```{r, fig.height=5, fig.width=8.5}
+r <- Tvis_fun(a488, bb488, 0, 0)
+plot(r, main= "Vertical Transmittance (Tvis) at surface")
+```
+
+###Tvis at 25 m
+
+```{r, fig.height=5, fig.width=8.5}
+r <- Tvis_fun(a488, bb488, 25, 0)
+plot(r, main= "Vertical Transmittance (Tvis) at 25-m")
+```
+
+###Tvis at euphotic depth
+
+```{r, fig.height=5, fig.width=8.5}
+r <- Tvis_fun(a488, bb488, Zeu, 0)
+# remove the top 1% of data
+r[r>quantile(r, 0.99)] <- NA
+plot(r, main= "Vertical Transmittance (Tvis) at Zeu")
+```
